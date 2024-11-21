@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>寿司打 OCR</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.2);
+      display: none;
+      z-index: 1000;
+    }
+    .selection {
+      position: absolute;
+      border: 2px dashed red;
+      background: rgba(255, 0, 0, 0.2);
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div id="overlay"></div>
+  <script>
+    const overlay = document.getElementById('overlay');
+    let startX, startY, endX, endY, selection;
+
+    // マウスイベントで範囲選択
+    document.addEventListener('mousedown', (e) => {
+      overlay.style.display = 'block';
+      startX = e.clientX;
+      startY = e.clientY;
+
+      selection = document.createElement('div');
+      selection.classList.add('selection');
+      selection.style.left = `${startX}px`;
+      selection.style.top = `${startY}px`;
+      overlay.appendChild(selection);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!selection) return;
+
+      endX = e.clientX;
+      endY = e.clientY;
+
+      selection.style.width = `${Math.abs(endX - startX)}px`;
+      selection.style.height = `${Math.abs(endY - startY)}px`;
+
+      if (endX < startX) {
+        selection.style.left = `${endX}px`;
+      }
+      if (endY < startY) {
+        selection.style.top = `${endY}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!selection) return;
+
+      const x = parseInt(selection.style.left, 10);
+      const y = parseInt(selection.style.top, 10);
+      const width = parseInt(selection.style.width, 10);
+      const height = parseInt(selection.style.height, 10);
+
+      overlay.style.display = 'none';
+      html2canvas(document.body, { x, y, width, height }).then(canvas => {
+        const imageData = canvas.toDataURL();
+        document.body.appendChild(canvas); // デバッグ用: スクリーンショット表示
+
+        // OCR処理
+        Tesseract.recognize(imageData, 'eng')
+          .then(({ data: { text } }) => {
+            console.log('認識された文字:', text);
+            alert(`OCR結果: ${text}`);
+          })
+          .catch(error => console.error('OCRエラー:', error));
+      });
+
+      // 選択領域の削除
+      overlay.removeChild(selection);
+      selection = null;
+    });
+  </script>
+</body>
+</html>
